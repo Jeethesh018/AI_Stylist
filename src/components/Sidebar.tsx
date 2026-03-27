@@ -1,11 +1,19 @@
 import { ChangeEvent } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ImageUp, Palette, Shirt, UserRound } from 'lucide-react';
+import { ChevronLeft, ImageUp, Palette, Shirt, Sparkles, UserRound } from 'lucide-react';
 import { useStylistStore } from '../store';
+import type { TryOnStyle } from '../types';
 
 type SidebarProps = { mobile?: boolean };
 
 const labelClass = 'mb-2 text-xs uppercase tracking-wide text-white/45';
+
+const aiButtons: Array<{ id: TryOnStyle; label: string }> = [
+  { id: 'short_hair', label: 'Short Hair' },
+  { id: 'curly_hair', label: 'Curly Hair' },
+  { id: 'casual_outfit', label: 'Casual Outfit' },
+  { id: 'formal_outfit', label: 'Formal Outfit' }
+];
 
 export const Sidebar = ({ mobile = false }: SidebarProps) => {
   const {
@@ -16,6 +24,8 @@ export const Sidebar = ({ mobile = false }: SidebarProps) => {
     setMode,
     setFaceShape,
     setSkinTone,
+    runTryOn,
+    isGenerating,
     isSidebarCollapsed,
     toggleSidebar
   } = useStylistStore();
@@ -59,6 +69,24 @@ export const Sidebar = ({ mobile = false }: SidebarProps) => {
 
         {!collapsed && (
           <>
+            <div>
+              <p className={labelClass}>AI Try-On</p>
+              <div className="grid grid-cols-2 gap-2">
+                {aiButtons.map((btn) => (
+                  <motion.button
+                    key={btn.id}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={() => void runTryOn(btn.id)}
+                    disabled={isGenerating}
+                    className="rounded-xl border border-accent/30 bg-accent/10 px-2 py-2 text-xs text-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-55"
+                  >
+                    <Sparkles className="mx-auto mb-1 h-3.5 w-3.5" />
+                    {btn.label}
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+
             <div>
               <p className={labelClass}>Mode</p>
               <div className="grid grid-cols-2 gap-2">

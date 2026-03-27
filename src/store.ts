@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { buildResults } from './data/recommendations';
-import type { Mode, ResultItem } from './types';
+import { generateTryOnImage } from './lib/replicate';
+import type { Mode, ResultItem, TryOnStyle } from './types';
 
 type Point = { x: number; y: number };
 
 type StylistState = {
   image: string | null;
+  generatedImage: string | null;
   zoom: number;
   position: Point;
   mode: Mode;
@@ -15,6 +17,8 @@ type StylistState = {
   results: ResultItem[];
   overlayOpacity: number;
   isLoading: boolean;
+  isGenerating: boolean;
+  generationError: string | null;
   error: string | null;
   isSidebarCollapsed: boolean;
   setImage: (image: string | null) => void;
@@ -25,6 +29,7 @@ type StylistState = {
   setSkinTone: (skinTone: StylistState['skinTone']) => void;
   setSelectedStyle: (style: ResultItem) => void;
   setOverlayOpacity: (value: number) => void;
+  runTryOn: (style: TryOnStyle) => Promise<void>;
   resetCanvas: () => void;
   toggleSidebar: () => void;
   refreshResults: () => void;
@@ -36,6 +41,7 @@ const initialTone = 'medium';
 
 export const useStylistStore = create<StylistState>((set, get) => ({
   image: null,
+  generatedImage: null,
   zoom: 1,
   position: { x: 0, y: 0 },
   mode: initialMode,
@@ -45,12 +51,16 @@ export const useStylistStore = create<StylistState>((set, get) => ({
   results: buildResults(initialMode, initialFace, initialTone),
   overlayOpacity: 0.5,
   isLoading: false,
+  isGenerating: false,
+  generationError: null,
   error: null,
   isSidebarCollapsed: false,
   setImage: (image) =>
     set({
       image,
-      error: image ? null : 'Upload an image to start styling.'
+      generatedImage: null,
+      error: image ? null : 'Upload an image to start styling.',
+      generationError: null
     }),
   setZoom: (zoom) => set({ zoom: Math.min(2.5, Math.max(0.4, zoom)) }),
   setPosition: (position) => set({ position }),
@@ -75,6 +85,27 @@ export const useStylistStore = create<StylistState>((set, get) => ({
   },
   setSelectedStyle: (selectedStyle) => set({ selectedStyle }),
   setOverlayOpacity: (overlayOpacity) => set({ overlayOpacity }),
+  runTryOn: async (style) => {
+    const { generatedImage, image } = get();
+    const sourceImage = generatedImage ?? image;
+
+    if (!sourceImage) {
+      set({ generationError: 'Upload an image before running AI try-on.' });
+      return;
+    }
+
+    set({ isGenerating: true, generationError: null, error: null });
+
+    try {
+      const output = await generateTryOnImage(sourceImage, style);
+      set({ generatedImage: output, isGenerating: false, generationError: null, selectedStyle: null });
+    } catch (error) {
+      set({
+        isGenerating: false,
+        generationError: error instanceof Error ? error.message : 'AI try-on failed.'
+      });
+    }
+  },
   toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
   refreshResults: () => {
     const { mode, faceShape, skinTone } = get();
@@ -87,8 +118,10 @@ export const useStylistStore = create<StylistState>((set, get) => ({
     set((state) => ({
       zoom: 1,
       position: { x: 0, y: 0 },
+      generatedImage: null,
       selectedStyle: null,
       overlayOpacity: 0.5,
-      error: state.image ? null : 'Upload an image to start styling.'
+      error: state.image ? null : 'Upload an image to start styling.',
+      generationError: null
     }))
 }));

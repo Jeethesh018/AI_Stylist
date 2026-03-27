@@ -1,11 +1,27 @@
 import { PointerEvent, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { LoaderCircle } from 'lucide-react';
 import { useStylistStore } from '../store';
 import { OverlayLayer } from './OverlayLayer';
 import { Toolbar } from './Toolbar';
 
 export const CanvasEditor = () => {
-  const { image, zoom, position, setPosition, setZoom, resetCanvas, selectedStyle, overlayOpacity, error } = useStylistStore();
+  const {
+    image,
+    generatedImage,
+    zoom,
+    position,
+    setPosition,
+    setZoom,
+    resetCanvas,
+    selectedStyle,
+    overlayOpacity,
+    error,
+    isGenerating,
+    generationError
+  } = useStylistStore();
+
+  const displayImage = generatedImage ?? image;
   const dragging = useRef(false);
   const start = useRef({ x: 0, y: 0 });
 
@@ -34,28 +50,37 @@ export const CanvasEditor = () => {
         onPointerUp={onPointerUp}
         onPointerLeave={onPointerUp}
       >
-        {!image && (
+        {!displayImage && (
           <div className="absolute inset-0 grid place-items-center text-center text-white/45">
             <div>
               <p className="mb-2 text-lg font-semibold">Drop an image to begin designing</p>
-              <p className="text-sm">Use the left panel to upload and explore style simulations.</p>
+              <p className="text-sm">Use AI Try-On buttons to generate hairstyles and outfits.</p>
             </div>
           </div>
         )}
 
-        {image && (
+        {displayImage && (
           <motion.div
             style={{ x: position.x, y: position.y, scale: zoom }}
             className="absolute left-1/2 top-1/2 h-[82%] w-[60%] -translate-x-1/2 -translate-y-1/2"
             transition={{ type: 'spring', stiffness: 260, damping: 24 }}
           >
-            <img src={image} alt="Uploaded model" className="h-full w-full rounded-[28px] object-cover shadow-panel" />
+            <img src={displayImage} alt="Styled model" className="h-full w-full rounded-[28px] object-cover shadow-panel" />
             <OverlayLayer overlay={selectedStyle?.overlay} opacity={overlayOpacity} />
           </motion.div>
         )}
+
+        {isGenerating && (
+          <div className="absolute inset-0 grid place-items-center bg-black/45 backdrop-blur-sm">
+            <div className="flex items-center gap-3 rounded-2xl border border-accent/35 bg-zinc-900/85 px-4 py-3 text-sm text-white">
+              <LoaderCircle className="h-5 w-5 animate-spin text-accent" />
+              Generating AI try-on preview...
+            </div>
+          </div>
+        )}
       </div>
 
-      {error && <p className="mt-3 text-sm text-amber-400">{error}</p>}
+      {(error || generationError) && <p className="mt-3 text-sm text-amber-400">{generationError ?? error}</p>}
     </section>
   );
 };
